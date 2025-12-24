@@ -5,8 +5,7 @@ import { audioManager } from './audioService';
 
 // --- IMPORTS FIREBASE ---
 import { db } from './firebase'; 
-import { doc, setDoc, addDoc, collection } from 'firebase/firestore';
-
+import { doc, setDoc, addDoc, collection, updateDoc } from 'firebase/firestore'; // Ajoute updateDoc
 // --- Icons & SVG ---
 
 const ItemIcon: React.FC<{ type: ItemType; className?: string }> = ({ type, className = "w-6 h-6" }) => {
@@ -628,7 +627,7 @@ export default function App() {
 
   // --- FIREBASE SYNC LOGIC ---
 
-  // 1. Synchronisation vers le MJ (Debounced)
+// 1. Synchronisation vers le MJ (Debounced)
   useEffect(() => {
     if (!isJoined || !roomCode || !char.name) return;
 
@@ -636,8 +635,13 @@ export default function App() {
         try {
             // On écrase la fiche dans la sous-collection "players" de la room
             const playerRef = doc(db, "rooms", roomCode, "players", char.name);
+            
             await setDoc(playerRef, {
                 ...char,
+                // AJOUT CRUCIAL : On envoie les stats calculées (avec bonus)
+                effectiveStats: effectiveStats,
+                // On peut aussi envoyer le poids max calculé
+                maxWeight: maxWeight,
                 lastUpdate: Date.now()
             }, { merge: true });
         } catch (error) {
@@ -645,11 +649,32 @@ export default function App() {
         }
     };
 
-    // Debounce de 2 secondes pour éviter de spammer la DB à chaque frappe
-    const timer = setTimeout(syncToCloud, 2000);
+    // J'ai réduit le délai à 1000ms (1s) pour que le MJ voit les changements plus vite
+    const timer = setTimeout(syncToCloud, 1000);
     return () => clearTimeout(timer);
-  }, [char, isJoined, roomCode]);
 
+    // IMPORTANT : Ajoute 'effectiveStats' et 'maxWeight' ici pour détecter les changements de bonus
+  }, [char, isJoined, roomCode, effectiveStats, maxWeight]);
+  
+  // --- HEARTBEAT (Garde la connexion vivante) ---
+  // Envoie un signal toutes les 5 secondes pour dire "Je suis connecté"
+  useEffect(() => {
+    if (!isJoined || !roomCode || !char.name) return;
+
+    const heartbeat = setInterval(async () => {
+        try {
+            // Mise à jour légère juste pour l'heure
+            const playerRef = doc(db, "rooms", roomCode, "players", char.name);
+            // On utilise updateDoc pour ne pas renvoyer toute la fiche, juste l'heure
+            await updateDoc(playerRef, { lastUpdate: Date.now() });
+        } catch(e) {
+            // Ignorer les erreurs silencieuses de réseau
+        }
+    }, 5000); // 5 secondes
+
+    return () => clearInterval(heartbeat);
+  }, [isJoined, roomCode, char.name]);
+  
   // 2. Fonction d'envoi de Logs (Actions)
   const emitActionLog = async (message: string, isHeavy: boolean = false) => {
     if (!isJoined || !roomCode || !char.name) return;

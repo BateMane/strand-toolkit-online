@@ -2,71 +2,276 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Interface Maître du Jeu - Strand Toolkit</title>
+    <title>TERMINAL OPÉRATEUR - STRAND</title>
     <style>
-        body { font-family: sans-serif; background: #222; color: #fff; display: flex; flex-direction: column; height: 100vh; margin: 0; }
-        
-        /* Login Overlay */
-        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: #000; z-index: 999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        #login-overlay input { padding: 10px; margin: 5px; }
-        
-        /* Layout */
-        #dashboard { display: flex; flex: 1; padding: 20px; gap: 20px; display: none; } /* Caché par défaut */
-        #players-container { flex: 2; display: flex; flex-wrap: wrap; gap: 15px; overflow-y: auto; }
-        #logs-container { flex: 1; background: #333; padding: 10px; border-radius: 8px; overflow-y: auto; max-height: 90vh; border-left: 4px solid #555; }
-        
-        /* Player Cards */
-        .player-card { background: #444; padding: 15px; border-radius: 8px; width: 250px; border: 1px solid #666; }
-        .player-card h3 { margin-top: 0; color: #ffa500; }
-        .stat-bar { background: #111; height: 10px; border-radius: 5px; margin: 5px 0; overflow: hidden; }
-        .stat-fill { height: 100%; background: green; transition: width 0.3s; }
+        :root {
+            --theme-color: #ffb700;
+            --bg-color: #050505;
+            --panel-bg: rgba(10, 10, 10, 0.95);
+            --red-alert: #ff3333;
+            --blue-mental: #3388ff;
+            --green-buff: #44ff44;
+        }
 
-        /* Logs */
-        .log-entry { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #444; font-size: 0.9em; }
-        .log-heavy { color: #ff5555; font-weight: bold; border-left: 3px solid red; padding-left: 5px; }
-        .timestamp { color: #888; font-size: 0.8em; margin-right: 5px; }
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: 'Courier New', Courier, monospace; 
+            background: var(--bg-color); 
+            color: var(--theme-color); 
+            margin: 0; height: 100vh; overflow: hidden; 
+            display: flex; flex-direction: column;
+            text-shadow: 0 0 2px rgba(255, 183, 0, 0.3);
+        }
+
+        /* CRT EFFECTS */
+        .scanline {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px; pointer-events: none; z-index: 999; opacity: 0.3;
+        }
+        .crt-overlay {
+            position: fixed; inset: 0; pointer-events: none; z-index: 998;
+            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.4) 100%);
+        }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: var(--theme-color); }
+
+        /* HEADER */
+        #header {
+            padding: 10px 20px; 
+            border-bottom: 2px solid var(--theme-color);
+            display: flex; justify-content: space-between; align-items: center;
+            background: #000; z-index: 10;
+            box-shadow: 0 0 15px rgba(255, 183, 0, 0.1);
+        }
+        
+        .header-title { font-weight: bold; letter-spacing: 2px; font-size: 1.2em; }
+        .header-tag { font-size: 0.6em; background: var(--theme-color); color: black; padding: 2px 5px; margin-left: 10px; font-weight: bold; }
+
+        button.action-btn {
+            background: transparent; color: var(--theme-color); border: 1px solid var(--theme-color); 
+            padding: 5px 15px; font-weight: bold; cursor: pointer; font-family: inherit; text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        button.action-btn:hover { background: var(--theme-color); color: #000; box-shadow: 0 0 10px var(--theme-color); }
+        
+        button.logout-btn { border-color: var(--red-alert); color: var(--red-alert); }
+        button.logout-btn:hover { background: var(--red-alert); color: #000; box-shadow: 0 0 10px var(--red-alert); }
+
+        /* LAYOUT */
+        #main-container { display: flex; flex: 1; overflow: hidden; }
+        #left-panel { flex: 3; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid #333; }
+        
+        #players-zone { 
+            flex: 1; padding: 20px; overflow-y: auto; 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); 
+            gap: 20px; align-content: start; 
+        }
+        
+        #offline-zone { 
+            max-height: 250px; overflow-y: auto; 
+            border-top: 1px dashed #444; background: #080808; 
+            padding: 10px; display: flex; gap: 10px; flex-wrap: wrap; 
+        }
+        .offline-title { width: 100%; color: #666; font-size: 0.7em; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+
+        #logs-zone { 
+            flex: 1; min-width: 350px; background: #020202; 
+            display: flex; flex-direction: column; 
+            border-left: 2px solid var(--theme-color);
+        }
+        #logs-list { flex: 1; overflow-y: auto; padding: 10px; font-size: 0.8em; font-family: monospace; }
+        
+        .logs-title-bar {
+            background: var(--theme-color); color: black; padding: 5px 10px; 
+            font-weight: bold; text-align: center; display: flex; justify-content: space-between; align-items: center;
+            letter-spacing: 1px;
+        }
+        .clear-btn { background: black; color: var(--theme-color); border: none; font-size: 0.7em; cursor: pointer; padding: 2px 6px; font-weight: bold; }
+        .clear-btn:hover { background: #333; }
+
+        /* --- PLAYER CARD DESIGN --- */
+        .player-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--theme-color);
+            padding: 2px; 
+            position: relative; 
+            transition: all 0.2s ease;
+            box-shadow: 0 0 5px rgba(255, 183, 0, 0.1);
+        }
+        
+        .card-inner {
+            border: 1px solid rgba(255, 183, 0, 0.3);
+            padding: 12px;
+            height: 100%;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+
+        .player-card.updated { box-shadow: 0 0 15px #fff; border-color: #fff; }
+        .player-card.offline { opacity: 0.5; filter: grayscale(1); transform: scale(0.98); border-style: dashed; }
+
+        /* HEADER CARD CORRIGÉ */
+        .card-header { 
+            display: flex; justify-content: space-between; align-items: flex-start; 
+            border-bottom: 1px solid #333; padding-bottom: 8px; position: relative;
+            padding-right: 30px; /* Espace pour le bouton X */
+        }
+        .char-identity { display: flex; flex-direction: column; }
+        .char-name { font-size: 1.3em; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #fff; }
+        .char-class { font-size: 0.75em; color: var(--theme-color); opacity: 0.8; font-style: italic; }
+        .char-meta { text-align: right; font-size: 0.7em; color: #666; display: flex; flex-direction: column; align-items: flex-end;}
+        .level-box { border: 1px solid var(--theme-color); padding: 1px 4px; display: inline-block; color: var(--theme-color); margin-top: 2px; }
+
+        /* DELETE BTN CORRIGÉ */
+        .delete-btn {
+            position: absolute; top: 0; right: 0;
+            background: #111; color: #555; border: 1px solid #333; border-top: none; border-right: none;
+            width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 10px; z-index: 5;
+        }
+        .delete-btn:hover { background: var(--red-alert); color: #fff; border-color: var(--red-alert); }
+
+        /* BARS */
+        .bars-section { display: flex; flex-direction: column; gap: 6px; }
+        .bar-group { display: flex; flex-direction: column; }
+        .bar-label { display: flex; justify-content: space-between; font-size: 0.65em; color: var(--theme-color); margin-bottom: 2px; text-transform: uppercase; }
+        .bar-track { height: 8px; background: #111; border: 1px solid #444; width: 100%; position: relative; }
+        .bar-fill { height: 100%; transition: width 0.3s; }
+        .hp-fill { background: var(--red-alert); }
+        .mental-fill { background: var(--blue-mental); }
+
+        /* STATS GRID */
+        .stats-grid { 
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; 
+            padding: 8px 0; border-top: 1px solid #222; border-bottom: 1px solid #222;
+        }
+        .stat-box { 
+            display: flex; flex-direction: column; align-items: center; 
+            border: 1px solid #333; background: rgba(255, 255, 255, 0.03); padding: 4px;
+        }
+        .stat-name { font-size: 0.55em; color: #777; text-transform: uppercase; }
+        .stat-value { font-size: 1.1em; font-weight: bold; color: #eee; }
+        .stat-bonus { font-size: 0.6em; color: var(--green-buff); position: absolute; margin-top: -5px; margin-left: 20px; }
+
+        /* COLLAPSIBLES */
+        details { margin-top: 5px; border: 1px solid #333; background: rgba(0,0,0,0.4); }
+        summary { 
+            cursor: pointer; padding: 6px 10px; font-size: 0.75em; font-weight: bold; 
+            background: #111; list-style: none; display: flex; justify-content: space-between; 
+            color: #888; text-transform: uppercase; letter-spacing: 1px;
+        }
+        summary:hover { background: #2a2a2a; color: var(--theme-color); }
+        details[open] summary { border-bottom: 1px solid #333; color: var(--theme-color); background: rgba(255, 183, 0, 0.1); }
+        .details-content { padding: 8px; font-size: 0.75em; max-height: 200px; overflow-y: auto; }
+        
+        /* ITEMS */
+        .item-row { 
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #222; padding: 4px 0; 
+        }
+        
+        .item-tag {
+        font-size: 0.65em;
+        color: #58a; /* Un bleu-gris style interface */
+        border: 1px solid #346;
+        background: rgba(20, 30, 50, 0.5);
+        padding: 1px 4px;
+        margin-right: 6px;
+        text-transform: uppercase;
+        font-family: monospace;
+        display: inline-block;
+        min-width: 45px; /* Pour aligner un peu */
+        text-align: center;
+        }
+        
+        .item-name { color: #aaa; }
+        .item-equipped { color: var(--theme-color); font-weight: bold; text-shadow: 0 0 5px rgba(255,183,0,0.3); }
+        .item-mods { font-size: 0.85em; color: var(--green-buff); margin-left: 5px; font-family: monospace; }
+        .item-qty { color: #555; font-size: 0.9em; }
+
+        /* SKILLS */
+        .skill-item { padding: 4px; border-bottom: 1px solid #222; cursor: help; display: flex; justify-content: space-between; }
+        .skill-item:hover { background: #222; color: #fff; }
+        .skill-level { color: var(--theme-color); font-weight: bold; }
+
+        /* TOOLTIP */
+        #global-tooltip {
+            position: fixed; display: none; background: #000; border: 1px solid var(--theme-color);
+            padding: 10px; max-width: 300px; color: #ddd; font-size: 0.85em;
+            z-index: 9999; box-shadow: 0 0 15px rgba(0,0,0,0.8);
+            white-space: pre-wrap; pointer-events: none;
+        }
+        #global-tooltip strong { color: var(--theme-color); display: block; margin-bottom: 5px; border-bottom: 1px solid #333; text-transform: uppercase; }
+
+        /* LOGS & LOGIN */
+        .log-entry { margin-bottom: 5px; padding: 4px; border-left: 2px solid #333; font-family: monospace; line-height: 1.4; }
+        .log-heavy { border-left-color: var(--red-alert); background: rgba(255,50,50,0.1); }
+        .timestamp { color: #555; font-size: 0.8em; margin-right: 5px; }
+        .log-player { color: #fff; font-weight: bold; }
+
+        #login-overlay { position: fixed; inset: 0; background: #000; z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        input { background: #111; border: 1px solid var(--theme-color); color: var(--theme-color); padding: 10px; margin: 5px; font-family: 'Courier New'; text-align: center; }
+        .login-btn { background: var(--theme-color); color: #000; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .login-btn:hover { background: #fff; }
     </style>
 </head>
 <body>
+    <div class="crt-overlay"></div>
+    <div class="scanline"></div>
 
-    <!-- LOGIN SCREEN -->
     <div id="login-overlay">
-        <h2>Accès Maître du Jeu</h2>
-        <input type="text" id="username" placeholder="Identifiant">
-        <input type="password" id="password" placeholder="Mot de passe">
-        <button onclick="checkAuth()">Entrer</button>
-        <p id="error-msg" style="color:red; display:none;">Accès refusé</p>
+        <h1 style="text-shadow: 0 0 10px var(--theme-color);">STRAND // SURVEILLANCE</h1>
+        <input type="text" id="username" placeholder="IDENTIFIANT">
+        <input type="password" id="password" placeholder="MOT DE PASSE">
+        <button class="login-btn" onclick="checkAuth()">CONNEXION TERMINAL</button>
+        <p id="error-msg" style="color:red; display:none; margin-top:10px;">ACCÈS REFUSÉ</p>
     </div>
 
-    <!-- MAIN DASHBOARD -->
-    <div id="dashboard">
-        <!-- Zone des fiches joueurs -->
-        <div id="players-container">
-            <p>En attente de connexion des joueurs...</p>
+    <div id="header" style="display:none;">
+        <div class="header-title">SURVEILLANCE GROUPE <span class="header-tag">ONLINE</span></div>
+        <div class="header-actions">
+            <button class="action-btn" onclick="window.refreshGM()">ACTUALISER</button>
+            <button class="action-btn logout-btn" onclick="location.reload()">DÉCONNEXION</button>
+        </div>
+    </div>
+
+    <div id="main-container" style="display:none;">
+        <div id="left-panel">
+            <div id="players-zone">
+                <!-- Zone vide par défaut, plus de texte moche -->
+            </div>
+            
+            <div id="offline-zone">
+                <div class="offline-title">SIGNAL PERDU / DÉCONNECTÉS</div>
+            </div>
         </div>
 
-        <!-- Zone des logs -->
-        <div id="logs-container">
-            <h3>Journal d'actions</h3>
+        <div id="logs-zone">
+            <div class="logs-title-bar">
+                <span>JOURNAL TACTIQUE</span>
+                <button class="clear-btn" onclick="window.clearLogs()">EFFACER</button>
+            </div>
             <div id="logs-list"></div>
         </div>
     </div>
 
-    <!-- Son d'alerte (trouve un petit fichier mp3) -->
+    <div id="global-tooltip"></div>
     <audio id="alert-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
-    <!-- Script Module -->
-    <script type="module" src="gm.js"></script>
-    
-    <!-- Script Auth Simple (Non sécurisé mais fonctionnel pour ton besoin) -->
+    <script type="module" src="/gm.js"></script>
+
     <script>
         function checkAuth() {
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
             if(u === 'admin' && p === 'admin') {
                 document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'flex';
-                // Déclenche le chargement des données
+                document.getElementById('header').style.display = 'flex';
+                document.getElementById('main-container').style.display = 'flex';
                 window.startGMTools(); 
             } else {
                 document.getElementById('error-msg').style.display = 'block';
