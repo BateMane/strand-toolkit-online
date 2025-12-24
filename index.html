@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TERMINAL STRAND // ACCÈS NULVA TERRA</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+    
+    <style>
+      :root {
+        --color-rust: #b45309;
+        --color-rust-dim: #78350f;
+        --color-rad: #22c55e;
+        --color-rad-dim: #15803d;
+        --color-salt: #e5e7eb;
+        --crt-flicker: 0.02;
+      }
+
+      body {
+        background-color: #050505;
+        font-family: 'Share Tech Mono', monospace;
+        color: var(--color-rust);
+        overflow-x: hidden;
+        margin: 0;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar { width: 8px; background: #111; }
+      ::-webkit-scrollbar-thumb { background: #444; border: 1px solid #000; }
+      ::-webkit-scrollbar-thumb:hover { background: var(--color-rust); }
+
+      /* CRT Effects */
+      .scanline {
+        width: 100%; height: 100px; z-index: 50; position: fixed; bottom: 100%;
+        background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(0,0,0,0) 100%);
+        opacity: 0.1; animation: scanline 10s linear infinite; pointer-events: none;
+      }
+      @keyframes scanline { 0% { bottom: 100%; } 80% { bottom: 100%; } 100% { bottom: -100px; } }
+
+      .crt-overlay {
+        position: fixed; inset: 0; pointer-events: none; z-index: 60;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        background-size: 100% 2px, 3px 100%;
+      }
+
+      /* CUSTOM TERMINAL SLIDER */
+      .strand-slider {
+        -webkit-appearance: none;
+        width: 100%;
+        background: transparent;
+      }
+      .strand-slider:focus { outline: none; }
+      
+      /* La barre du slider */
+      .strand-slider::-webkit-slider-runnable-track {
+        width: 100%; height: 4px; background: #222; border: 1px solid #444;
+      }
+      /* Le curseur (rectangulaire) */
+      .strand-slider::-webkit-slider-thumb {
+        height: 14px; width: 8px; background: var(--theme-primary);
+        -webkit-appearance: none; margin-top: -6px; /* Centrage */
+        box-shadow: 0 0 5px var(--theme-primary);
+        border-radius: 0; cursor: pointer;
+      }
+      /* Version Firefox */
+      .strand-slider::-moz-range-track { width: 100%; height: 4px; background: #222; }
+      .strand-slider::-moz-range-thumb {
+        height: 14px; width: 8px; background: var(--theme-primary);
+        border-radius: 0; cursor: pointer; box-shadow: 0 0 5px var(--theme-primary);
+      }
+
+      /* Thèmes */
+      .theme-rust { --theme-primary: var(--color-rust); --theme-dim: var(--color-rust-dim); }
+      .theme-rad { --theme-primary: var(--color-rad); --theme-dim: var(--color-rad-dim); }
+      .theme-salt { --theme-primary: var(--color-salt); --theme-dim: #9ca3af; }
+
+      .border-theme { border-color: var(--theme-primary); }
+      .text-theme { color: var(--theme-primary); }
+      .bg-theme { background-color: var(--theme-primary); }
+      
+      .input-base {
+        background: #0a0a0a; border: 1px solid #333; color: inherit; padding: 0.5rem; width: 100%;
+        transition: all 0.2s; font-family: 'Share Tech Mono', monospace;
+      }
+      .input-base:focus { outline: none; border-color: var(--theme-primary); box-shadow: 0 0 8px var(--theme-dim); }
+
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+      .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@19.0.0",
+        "react-dom": "https://esm.sh/react-dom@19.0.0",
+        "react-dom/client": "https://esm.sh/react-dom@19.0.0/client"
+      }
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
