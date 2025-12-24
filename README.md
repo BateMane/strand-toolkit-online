@@ -1,69 +1,85 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
-# 📟 TERMINAL STRAND v4.1 // ACCÈS NULVA TERRA
-
-```text
-  _____ _______ _____         _   _ _____  
+_____ _______ _____         _   _ _____  
  / ____|__   __|  __ \    /\  | \ | |  __ \ 
 | (___    | |  | |__) |  /  \ |  \| | |  | |
  \___ \   | |  |  _  /  / /\ \| . ` | |  | |
  ____) |  | |  | | \ \ / ____ \ |\  | |__| |
 |_____/   |_|  |_|  \_/_/    \_\_| \_|_____/ 
+             [ O N L I N E _ U P L I N K ]
                                             
-> SYSTEM_STATUS: ONLINE
-> PROTOCOL: STRAND_CORE_v4.1
-> AUDIO_ENGINE: PROCEDURAL_DRONE_ON
-> CONNECTION: ESTABLISHED TO NULVA_TERRA
+> SYSTEM_STATUS: CONNECTED
+> PROTOCOL: FIREBASE_REALTIME_SYNC
+> LATENCY: < 15ms
+> ENCRYPTION: STANDARD
 
 --------------------------------------------------------------------------------
 
-Bienvenue, survivant. Ce terminal est ton interface de liaison diégétique avec 
-les protocoles Strand. Il permet la gestion complète de ton matricule, de ton 
-équipement et de ton évolution biotique au sein de l'Ordre ou en dehors.
+Bienvenue sur le réseau, Opérateur. Cette version du Strand Toolkit intègre 
+une couche de synchronisation quantique (Firebase) permettant le monitoring 
+en temps réel de toutes les unités déployées sur le terrain.
 
-🛠 FONCTIONNALITÉS DU SYSTÈME :
-- IDENTITÉ DIÉGÉTIQUE : Encodage complet des données (Nom, Surnom, Origine, Race, Classe).
-- MONITORING VITAL : Suivi en temps réel des Points de Vie et de la Stabilité Mentale avec effets visuels de stress.
-- INTERFACE ÉQUIPEMENT v4.1 : Grille visuelle interactive avec logique d'équipement immuable (gestion automatique des mains).
-- ARBRE DE COMPÉTENCES : Interface en sablier pour l'optimisation de vos modules de classe via vos points de synchronisation.
-- AUDIO IMMERSIF : Générateur de drone procédural basse fréquence avec slider de contrôle dédié au design rétro.
-- RENDU CRT : Filtre cathodique, scanlines animées et effets de scintillement pour une immersion totale.
-- PERSISTANCE : Sauvegarde automatique de votre matricule dans le localStorage de votre navigateur.
+Le système est désormais divisé en deux terminaux distincts : 
+le Client (Joueur) et la Tour de Contrôle (MJ).
+
+📡 NOUVELLES FONCTIONNALITÉS RÉSEAU :
+- SYNCHRONISATION LIVE : Les modifications de fiche (PV, Inventaire, Stats) sont transmises instantanément.
+- TERMINAL DE SURVEILLANCE (MJ) : Interface dédiée permettant de voir toutes les fiches connectées.
+- SIGNAL VITAL (HEARTBEAT) : Détection automatique de présence. Si un agent coupe son flux (ferme l'onglet), il passe OFFLINE après 15s.
+- JOURNAL TACTIQUE : Log automatique des actions critiques (Level Up, Mort, Jets de dés implicites).
+- CALCULATEUR EFFECTIF : Le MJ visualise les statistiques réelles (Base + Bonus équipement).
 
 --------------------------------------------------------------------------------
 
-RUN LOCALLY :
-Prerequisites: Node.js (v18+)
+STRUCTURE DU SYSTÈME :
 
-1. Installer les dépendances :
+📂 /src
+   Contient l'application React pour les Joueurs.
+   [App.tsx] : Cerveau du client, gestion de l'envoi de données.
+   [firebase.ts] : Configuration de l'uplink pour le client.
+
+📂 /public
+   Contient les outils statiques pour le Maître du Jeu.
+   [gm.html] : Interface visuelle de surveillance.
+   [gm.js] : Logique de réception et d'affichage des données.
+   [firebase-init.js] : Configuration de l'uplink pour le MJ.
+   [_redirects] : Protocole de routage pour le déploiement Netlify.
+
+--------------------------------------------------------------------------------
+
+INITIALISATION LOCALE :
+
+1. Installer les modules :
    > npm install
 
-2. Lancer le terminal en mode développement :
+2. Ouvrir le canal de fréquence (Lancer le serveur) :
    > npm run dev
 
-3. Accéder au terminal :
-   Ouvrez http://localhost:3000 dans votre navigateur.
+3. Accès aux Terminaux :
+   > JOUEUR : http://localhost:5173/
+   > ADMIN (MJ) : http://localhost:5173/gm.html
 
 --------------------------------------------------------------------------------
 
-DEPLOYMENT (FICHIER UNIQUE) :
-Pour générer un fichier autonome à envoyer à vos joueurs :
+PROTOCOLE DE DÉPLOIEMENT (NETLIFY) :
 
-1. Compiler le projet :
-   > npm run build
+Pour mettre ce système en orbite sur le Net :
 
-2. Distribuer le fichier :
-   Le fichier unique index.html se trouve dans le dossier /dist. 
-   Il contient tout le code, les styles et les sons nécessaires.
+1. Assurez-vous que le fichier [_redirects] est présent dans le dossier /public.
+2. Connectez votre repo à Netlify.
+3. Build command : "npm run build"
+4. Publish directory : "dist"
+
+Une fois en ligne, l'URL de base sert aux joueurs. Ajoutez /gm.html à la fin 
+de l'URL pour accéder à la console de surveillance.
 
 --------------------------------------------------------------------------------
 
-⚠️ PROTOCOLE DE SÉCURITÉ :
-Les données sont stockées localement sur votre machine. Ne videz pas votre 
-cache de navigateur sans avoir exporté votre fichier .json au préalable.
+⚠️ AVERTISSEMENT CLASSIFIÉ :
+L'interface de surveillance (GM Tool) est protégée par une identification 
+sommaire. Ne diffusez pas l'URL /gm.html à vos joueurs, sous peine de 
+compromettre le brouillard de guerre.
 
-NOTE DE SERVICE : Sœur-Sangsue n'est pas un membre officiel de la Moisson.
+NOTE DE L'ADMINISTRATEUR :
+Le système de suppression de fiche est définitif. Pas de retour en arrière.
+La mort dans la Matrice est une mort réelle.
 
 [FIN DE TRANSMISSION_]
