@@ -3,6 +3,10 @@ import { Attribute, Character, Item, ItemType, EquipmentSlot, ConsumableType, Ac
 import { RACES, ORIGINS, CLASSES, CLASS_BONUSES, INITIAL_CHARACTER, ITEM_TYPES, EQUIPMENT_SLOTS, CONSUMABLE_TYPES, SKILL_DEFINITIONS, CLASS_TREES } from './constants';
 import { audioManager } from './audioService';
 
+// --- IMPORTS FIREBASE ---
+import { db } from './firebase'; 
+import { doc, setDoc, addDoc, collection } from 'firebase/firestore';
+
 // --- Icons & SVG ---
 
 const ItemIcon: React.FC<{ type: ItemType; className?: string }> = ({ type, className = "w-6 h-6" }) => {
@@ -304,17 +308,10 @@ const SkillDetailPanel: React.FC<{ skillId: string | null; character: Character;
                 </span>
              )}
           </div>
-          
-          {!isMaxed && !isLocked && canAfford && (
-             <div className="text-[10px] text-center text-gray-500 mt-2">
-                CLIQUEZ SUR LE NOEUD POUR VALIDER
-             </div>
-          )}
        </div>
     </div>
   );
 }
-
 // --- Equipment Grid & Item Creator ---
 
 const EquipmentGrid: React.FC<{ 
@@ -537,6 +534,12 @@ export default function App() {
   
   const [hoveredSkillId, setHoveredSkillId] = useState<string | null>(null);
   const [isCreatingItem, setIsCreatingItem] = useState(false);
+  
+  // --- FIREBASE STATES ---
+  const [isJoined, setIsJoined] = useState(false);
+  const [roomCode, setRoomCode] = useState("");
+  const [playerName, setPlayerName] = useState("");
+
 
   // Helper: Calculate Spent Points
   const calculateSpentPoints = () => {
@@ -623,6 +626,44 @@ export default function App() {
   const totalWeight = char.inventory.reduce((acc, item) => acc + (item.weight * item.quantity), 0);
   const maxWeight = getMaxWeight();
 
+  // --- FIREBASE SYNC LOGIC ---
+
+  // 1. Synchronisation vers le MJ (Debounced)
+  useEffect(() => {
+    if (!isJoined || !roomCode || !char.name) return;
+
+    const syncToCloud = async () => {
+        try {
+            // On écrase la fiche dans la sous-collection "players" de la room
+            const playerRef = doc(db, "rooms", roomCode, "players", char.name);
+            await setDoc(playerRef, {
+                ...char,
+                lastUpdate: Date.now()
+            }, { merge: true });
+        } catch (error) {
+            console.error("Erreur Sync Firebase:", error);
+        }
+    };
+
+    // Debounce de 2 secondes pour éviter de spammer la DB à chaque frappe
+    const timer = setTimeout(syncToCloud, 2000);
+    return () => clearTimeout(timer);
+  }, [char, isJoined, roomCode]);
+
+  // 2. Fonction d'envoi de Logs (Actions)
+  const emitActionLog = async (message: string, isHeavy: boolean = false) => {
+    if (!isJoined || !roomCode || !char.name) return;
+    try {
+        await addDoc(collection(db, "rooms", roomCode, "logs"), {
+            playerName: char.name,
+            message: message,
+            isHeavy: isHeavy, // True déclenchera l'alerte sonore chez le MJ
+            timestamp: Date.now()
+        });
+    } catch (e) {
+        console.error("Erreur log:", e);
+    }
+  };
   // Theme Logic based on Class
   useEffect(() => {
     const job = char.job;
@@ -738,6 +779,7 @@ export default function App() {
   const handleLevelUp = () => {
     try { audioManager.playLevelUp(); } catch(e){}
     setChar(prev => ({ ...prev, level: prev.level + 1 }));
+    emitActionLog(`LEVEL UP : Niveau ${char.level + 1} atteint!`, true);
   };
 
   const handleSkillUpgrade = (skillId: string, costSP: number, costCycles: number) => {
@@ -752,6 +794,8 @@ export default function App() {
         }
       };
     });
+    const def = SKILL_DEFINITIONS[skillId];
+    emitActionLog(`Compétence acquise: ${def?.name}`, true);
   };
 
   const handleBaseStatChange = (stat: Attribute, val: number) => {
@@ -761,6 +805,10 @@ export default function App() {
   const handleBarChange = (bar: 'hp' | 'mentalStability', type: 'current' | 'max', val: string) => {
     const num = parseInt(val) || 0;
     setChar(prev => ({ ...prev, [bar]: { ...prev[bar], [type]: num } }));
+
+    if(bar === 'hp' && type === 'current' && num <= 0) {
+        emitActionLog("EST TOMBÉ INCONSCIENT (0 PV) !", true);
+    }
   };
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -779,32 +827,8 @@ export default function App() {
     if (window.confirm("CONFIRMATION REQUISE : REFORMATAGE COMPLET DU SYSTÈME ?")) {
       try { audioManager.playStaticBurst(); } catch (e) {}
 
-      const resetState: Character = {
-        name: '',
-        nickname: '',
-        age: '',
-        gender: '',
-        race: 'Humain',
-        origin: 'Rix',
-        job: 'Pacteux',
-        xp: 0,
-        level: 1,
-        attributes: {
-          VIGUEUR: 10,
-          SILENCE: 10,
-          ESPRIT: 10,
-          TECH: 10,
-        },
-        skills: {},
-        activeBuffs: [],
-        hp: { current: 44, max: 44 }, 
-        mentalStability: { current: 20, max: 20 },
-        inventory: [],
-        cycles: 0,
-        journal: '',
-        abilities: '',
-        imageUrl: ''
-      };
+      emitActionLog("SIGNAL PERDU (Reset système)", true);
+      const resetState: Character = { ...INITIAL_CHARACTER };
 
       localStorage.setItem('strand_char_sheet', JSON.stringify(resetState));
       window.location.reload();
@@ -815,6 +839,7 @@ export default function App() {
   const handleSaveNewItem = (item: Item) => {
     setChar(prev => ({ ...prev, inventory: [...prev.inventory, item] }));
     setIsCreatingItem(false);
+    emitActionLog(`Objet ajouté: ${item.name}`);
   };
 
   const deleteItem = (id: string) => {
@@ -825,16 +850,20 @@ export default function App() {
     const effect = item.consumableEffect;
     
     if (effect) {
+       let logMsg = `A utilisé ${item.name}`;
+
        if (effect.type === ConsumableType.HEAL_HP) {
           setChar(prev => ({
               ...prev,
               hp: { ...prev.hp, current: Math.min(maxHP, prev.hp.current + effect.value) }
           }));
+          logMsg += ` (Soin +${effect.value})`;
        } else if (effect.type === ConsumableType.HEAL_MENTAL) {
           setChar(prev => ({
               ...prev,
               mentalStability: { ...prev.mentalStability, current: Math.min(prev.mentalStability.max, prev.mentalStability.current + effect.value) }
           }));
+          logMsg += ` (Mental +${effect.value})`;
        } else if (effect.type === ConsumableType.BUFF_STAT && effect.targetStat) {
           const newBuff: ActiveBuff = {
               id: Date.now().toString(),
@@ -844,7 +873,9 @@ export default function App() {
               duration: effect.duration || 'Temporaire'
           };
           setChar(prev => ({ ...prev, activeBuffs: [...(prev.activeBuffs || []), newBuff] }));
+          logMsg += ` (Buff +${effect.value} ${effect.targetStat})`;
        }
+       emitActionLog(logMsg, true);
     }
 
     setChar(prev => ({
@@ -894,32 +925,13 @@ export default function App() {
 
       return { ...prev, inventory: updatedInventory };
     });
+    emitActionLog(`${!item.equipped ? 'Equipe' : 'Retire'} ${item.name}`);
   };
 
-  const exportData = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(char));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `strand_${char.name || 'char'}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-  };
-
-  const importData = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const loaded = JSON.parse(event.target?.result as string);
-          setChar(loaded);
-        } catch (e) {
-          alert("Fichier corrompu.");
-        }
-      };
-      reader.readAsText(file);
-    }
+  const joinSession = () => {
+    if(!roomCode || !playerName) return;
+    setChar(prev => ({...prev, name: playerName.toUpperCase()}));
+    setIsJoined(true);
   };
 
   // Render Boot Screen
@@ -941,15 +953,43 @@ export default function App() {
     );
   }
 
+  // --- RENDER LOGIN (TERMINAL) ---
+  if (!isJoined) {
+    return (
+      <div className="h-screen bg-black flex flex-col items-center justify-center p-6 font-mono text-theme relative overflow-hidden">
+        <div className="fixed inset-0 pointer-events-none z-50 crt-overlay"></div>
+        <div className="border-2 border-theme p-10 space-y-6 max-w-sm w-full bg-black/80 z-10 relative shadow-[0_0_50px_rgba(0,255,0,0.1)]">
+          <div className="absolute -top-3 left-4 bg-black px-2 text-theme font-bold uppercase text-[10px]">Accès Réseau Strand</div>
+          <h2 className="text-center text-xl font-bold mb-6 animate-pulse">STRAND_TOOLKIT v4.1</h2>
+          <div className="space-y-4">
+            <div>
+                <label className="text-[10px] uppercase text-gray-500">IDENTIFIANT (NOM PERSO)</label>
+                <input className="input-base text-center uppercase tracking-widest font-bold" value={playerName} onChange={e => setPlayerName(e.target.value)} />
+            </div>
+            <div>
+                <label className="text-[10px] uppercase text-gray-500">FRÉQUENCE (ROOM ID)</label>
+                <input className="input-base text-center uppercase tracking-widest font-bold" value={roomCode} onChange={e => setRoomCode(e.target.value)} placeholder="ex: session_default" />
+            </div>
+            <Button onClick={joinSession} className="w-full py-4 text-sm tracking-widest mt-4">ÉTABLIR LA LIAISON</Button>
+          </div>
+          <div className="text-[9px] text-center text-gray-600 mt-4">CONNEXION AU SERVEUR NULVA... EN ATTENTE.</div>
+        </div>
+      </div>
+    );
+  }  
+
   // Render Main App
-  return (
+   return (
     <div className={`min-h-screen p-2 md:p-6 text-base theme-${theme} relative`}>
       <div className="fixed inset-0 pointer-events-none z-50 crt-overlay"></div>
       <div className="fixed inset-0 pointer-events-none z-40 scanline"></div>
       
       {/* Sticky Header Controls */}
       <div className="sticky top-0 z-30 bg-black/90 backdrop-blur border-b border-theme border-opacity-50 p-2 mb-6 flex flex-col md:flex-row justify-between items-center shadow-[0_0_15px_rgba(0,0,0,0.8)] gap-2">
-        <h1 className="text-xl font-bold tracking-tighter text-theme text-shadow-glow">TERMINAL STRAND v4.1</h1>
+        <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tighter text-theme text-shadow-glow">TERMINAL STRAND v4.1</h1>
+            <span className="text-[10px] bg-theme text-black px-2 font-bold rounded animate-pulse">ONLINE: {roomCode}</span>
+        </div>
         
         <div className="flex items-center gap-4">
            {/* Slider Audio Diégétique */}
@@ -969,11 +1009,6 @@ export default function App() {
                {isMuted ? 'UNMUTE' : 'MUTE'}
              </Button>
              <Button onClick={handleReset} variant="danger" className="border-red-600 text-red-600 hover:bg-red-900 cursor-pointer">RESET</Button>
-             <Button onClick={exportData}>SAVE</Button>
-             <label className="cursor-pointer">
-               <span className="px-4 py-1 font-bold uppercase tracking-widest text-sm transition-all duration-100 border border-theme text-theme hover:bg-theme hover:text-black inline-block">LOAD</span>
-               <input type="file" className="hidden" onChange={importData} accept=".json" />
-             </label>
            </div>
         </div>
       </div>
@@ -1028,7 +1063,7 @@ export default function App() {
                       </select>
                     </div>
                     <div>
-                       <label className="text-[10px] uppercase text-gray-500 block mb-1">Ville d'Origine</label>
+                       <label className="text-[10px] uppercase text-gray-500 block mb-1">Origine</label>
                        <select value={char.origin} onChange={handleGenericChange('origin')} className="input-base text-sm">
                         {ORIGINS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                       </select>
@@ -1315,3 +1350,4 @@ export default function App() {
     </div>
   );
 }
+  

@@ -1,3 +1,5 @@
+// types.ts
+
 export enum Attribute {
   VIGUEUR = 'VIGUEUR',
   SILENCE = 'SILENCE',
@@ -10,7 +12,7 @@ export enum ItemType {
   ARMOR = 'ARMOR',
   CONSUMABLE = 'CONSUMABLE',
   OBJECT = 'OBJECT',
-  CONTAINER = 'CONTAINER' // Backpacks
+  CONTAINER = 'CONTAINER' // Sacs à dos / Conteneurs
 }
 
 export enum EquipmentSlot {
@@ -21,7 +23,7 @@ export enum EquipmentSlot {
   BOOTS = 'BOOTS',
   BACKPACK = 'BACKPACK',
   MAIN_HAND = 'MAIN_HAND',
-  OFF_HAND = 'OFF_HAND' // Shield or secondary
+  OFF_HAND = 'OFF_HAND' // Bouclier ou arme secondaire
 }
 
 export enum ConsumableType {
@@ -34,7 +36,7 @@ export interface ConsumableEffect {
   type: ConsumableType;
   value: number;
   targetStat?: Attribute;
-  duration?: string; // Text description (e.g., "1 hour", "3 turns")
+  duration?: string; // Description textuelle (ex: "1 heure", "3 tours")
 }
 
 export interface ActiveBuff {
@@ -52,17 +54,17 @@ export interface Item {
   quantity: number;
   type: ItemType;
   
-  // Equipment specific
+  // Spécificités d'équipement
   slot?: EquipmentSlot;
   isTwoHanded?: boolean;
   equipped?: boolean;
   
-  // Consumable specific
+  // Spécificités de consommable
   consumableEffect?: ConsumableEffect;
 
-  // Modifiers
+  // Modificateurs
   modifiers?: Partial<Record<Attribute, number>>;
-  capacityBonus?: number; // For backpacks
+  capacityBonus?: number; // Pour les sacs à dos
   
   tags: string[];
 }
@@ -70,24 +72,43 @@ export interface Item {
 export interface SkillDefinition {
   id: string;
   name: string;
-  description: string; // The active effect description
+  description: string;
   maxLevel: number;
-  costSP: number; // Skill Points cost per level
-  costCycles?: number; // Optional extra cost in Cycles for high levels
+  costSP: number; 
+  costCycles?: number; 
   
-  // Requirements
-  parentId?: string; // ID of the parent skill
-  minParentLevel?: number; // Usually 3 to unlock next
+  // Prérequis
+  parentId?: string; 
+  minParentLevel?: number; 
   
-  // Effects
-  statBonus?: Partial<Record<Attribute, number>>; // Per level
-  hpBonus?: number; // Per level (Direct Max HP increase)
-  specialEffect?: string; // Text description shown in Cargo/Home
+  // Effets
+  statBonus?: Partial<Record<Attribute, number>>; 
+  hpBonus?: number; 
+  specialEffect?: string; 
   
-  children?: string[]; // IDs of children
+  children?: string[]; 
 }
 
+/**
+ * Interface pour les logs d'actions (Vue MJ)
+ */
+export interface GameLog {
+  id?: string;
+  timestamp: number;
+  playerName: string;
+  action: string;
+  tableId: string;
+}
+
+/**
+ * Interface Character mise à jour pour le mode en ligne
+ */
 export interface Character {
+  id: string;          // ID unique du joueur (crypto.randomUUID())
+  tableId: string;    // Code de la room (ex: ZONE-01)
+  lastUpdate: number; // Timestamp de la dernière modification
+  lastActiveTab: string; // Tracking de l'onglet consulté (ex: 'inv', 'skills')
+
   name: string;
   nickname: string;
   age: string;
@@ -101,17 +122,17 @@ export interface Character {
   attributes: Record<Attribute, number>;
   activeBuffs: ActiveBuff[];
   
-  // Skills: Map of SkillID -> Current Level
+  // Skills: Map de SkillID -> Niveau Actuel
   skills: Record<string, number>;
   
   hp: { current: number; max: number }; 
   mentalStability: { current: number; max: number }; 
   
   inventory: Item[];
-  cycles: number; // Monnaie
+  cycles: number; // Monnaie (Cycles)
   
   journal: string;
-  abilities: string; // Markdown/Text for skills/mutations
+  abilities: string; 
   
   imageUrl: string;
 }
@@ -119,4 +140,12 @@ export interface Character {
 export interface SelectOption {
   value: string;
   label: string;
+}
+
+export interface GameLog {
+  id?: string;
+  timestamp: number;
+  playerName: string;
+  action: string;
+  tableId: string;
 }

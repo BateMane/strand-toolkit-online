@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Interface Maître du Jeu - Strand Toolkit</title>
+    <style>
+        body { font-family: sans-serif; background: #222; color: #fff; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        
+        /* Login Overlay */
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: #000; z-index: 999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        #login-overlay input { padding: 10px; margin: 5px; }
+        
+        /* Layout */
+        #dashboard { display: flex; flex: 1; padding: 20px; gap: 20px; display: none; } /* Caché par défaut */
+        #players-container { flex: 2; display: flex; flex-wrap: wrap; gap: 15px; overflow-y: auto; }
+        #logs-container { flex: 1; background: #333; padding: 10px; border-radius: 8px; overflow-y: auto; max-height: 90vh; border-left: 4px solid #555; }
+        
+        /* Player Cards */
+        .player-card { background: #444; padding: 15px; border-radius: 8px; width: 250px; border: 1px solid #666; }
+        .player-card h3 { margin-top: 0; color: #ffa500; }
+        .stat-bar { background: #111; height: 10px; border-radius: 5px; margin: 5px 0; overflow: hidden; }
+        .stat-fill { height: 100%; background: green; transition: width 0.3s; }
+
+        /* Logs */
+        .log-entry { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #444; font-size: 0.9em; }
+        .log-heavy { color: #ff5555; font-weight: bold; border-left: 3px solid red; padding-left: 5px; }
+        .timestamp { color: #888; font-size: 0.8em; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-overlay">
+        <h2>Accès Maître du Jeu</h2>
+        <input type="text" id="username" placeholder="Identifiant">
+        <input type="password" id="password" placeholder="Mot de passe">
+        <button onclick="checkAuth()">Entrer</button>
+        <p id="error-msg" style="color:red; display:none;">Accès refusé</p>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="dashboard">
+        <!-- Zone des fiches joueurs -->
+        <div id="players-container">
+            <p>En attente de connexion des joueurs...</p>
+        </div>
+
+        <!-- Zone des logs -->
+        <div id="logs-container">
+            <h3>Journal d'actions</h3>
+            <div id="logs-list"></div>
+        </div>
+    </div>
+
+    <!-- Son d'alerte (trouve un petit fichier mp3) -->
+    <audio id="alert-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+    <!-- Script Module -->
+    <script type="module" src="gm.js"></script>
+    
+    <!-- Script Auth Simple (Non sécurisé mais fonctionnel pour ton besoin) -->
+    <script>
+        function checkAuth() {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            if(u === 'admin' && p === 'admin') {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'flex';
+                // Déclenche le chargement des données
+                window.startGMTools(); 
+            } else {
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
